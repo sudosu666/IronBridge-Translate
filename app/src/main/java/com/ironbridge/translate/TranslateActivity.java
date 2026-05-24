@@ -1,47 +1,23 @@
 package com.ironbridge.translate;
 
 import android.app.Activity;
-import android.app.SearchManager;
-import android.content.ClipData;
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
-import android.util.Base64;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.core.content.FileProvider;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 public final class TranslateActivity extends Activity {
 
     private static final String TAG = "IronBridgeTranslate";
-    private static final String PROCESS_TEXT_EXTRA = Intent.EXTRA_PROCESS_TEXT;
-    private static final String UTF_8 = "UTF-8";
-    private static final String QUERY_PREFIX = "#q=";
-    private static final String QUERY_LANGUAGE = "&lang=en";
-    private static final String NO_BROWSER_MESSAGE = "No compatible Firefox-based browser found.";
     private static final String FILE_PROVIDER_AUTHORITY = "com.ironbridge.translate.fileprovider";
-    static final String EXTRA_DIAGNOSTIC_REPORT = "com.ironbridge.translate.EXTRA_DIAGNOSTIC_REPORT";
-    private static final String DEBUG_BROWSER_PACKAGE = "org.mozilla.firefox";
-    private static final String BRIDGE_MIME_TYPE = "text/html";
-    private static final String BRIDGE_CACHE_DIR = "bridge";
-    private static final String BRIDGE_FILE_NAME = "index.html";
 
-    private static final String BASE64_HTML =
-            "data:text/html;base64,PCFkb2N0eXBlIGh0bWw+CjxodG1sIGxhbmc9ImVuIj4KPGhlYWQ+CjxtZXRhIGNoYXJzZXQ9InV0Zi04Ij4KPHRpdGxlPk9mZmxpbmUgVHJhbnNsYXRlIEJyaWRnZTwvdGl0bGU+CjxzdHlsZT5ib2R5e21hcmdpbjowO2JhY2tncm91bmQ6IzExMTtjb2xvcjojZWVlO2ZvbnQtZmFtaWx5OnN5c3RlbS11aSxzYW5zLXNlcmlmO3BhZGRpbmc6MXJlbX0jdGV4dHt3aGl0ZS1zcGFjZTpwcmUtd3JhcDt3b3JkLWJyZWFrOmJyZWFrLXdvcmQ7cGFkZGluZzouOHJlbTtib3JkZXItcmFkaXVzOjE2cHg7YmFja2dyb3VuZDpyZ2JhKDI1NSwyNTUsMjU1LC4wNCk7Ym9yZGVyOjFweCBzb2xpZCAjMzMzO21pbi1oZWlnaHQ6NnJlbTtsaW5lLWhlaWdodDoxLjV9PC9zdHlsZT4KPC9oZWFkPgo8Ym9keT4KPGRpdiBpZD0idGV4dCIgbGFuZz0iZW4iIGRpcj0ibHRyIj48L2Rpdj4KPHNjcmlwdD4KKGZ1bmN0aW9uKCl7CiBjb25zdCBwYXJhbXM9bmV3IFVSTFNlYXJjaFBhcmFtcyhsb2NhdGlvbi5zZWFyY2guc2xpY2UoMSkgfHwgbG9jYXRpb24uaGFzaC5zbGljZSgxKSk7CiBjb25zdCByYXc9cGFyYW1zLmdldCgncScpfHwnJzsKIGNvbnN0IGxhbmc9cGFyYW1zLmdldCgnbGFuZycpfHwnZW4nOwogY29uc3Qgc291cmNlPWRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCd0ZXh0Jyk7CiBjb25zdCB0ZXh0PWRlY29kZVVSSUNvbXBvbmVudChyYXcucmVwbGFjZSgvXCsvZywnICcpKTsKIHNvdXJjZS50ZXh0Q29udGVudD10ZXh0IHx8ICdObyB0ZXh0IHN1cHBsaWVkJzsKIHNvdXJjZS5zZXRBdHRyaWJ1dGUoJ2xhbmcnLCBsYW5nKTsKIHNvdXJjZS5zZXRBdHRyaWJ1dGUoJ2RpcicsICdsdHInKTsKIGNvbnN0IG9yaWdpbmFsPXRleHQudHJpbSgpOwogbGV0IGNvcGllZD1mYWxzZTsKIGZ1bmN0aW9uIGNvcHlUZXh0KHZhbHVlKXsKICAgIGlmKGNvcGllZCB8fCAhdmFsdWUgfHwgdmFsdWU9PT1vcmlnaW5hbCkgcmV0dXJuOwogICAgY29uc3QgZG9uZT0oKT0+e2NvcGllZD10cnVlfTsKICAgIGlmKG5hdmlnYXRvci5jbGlwYm9hcmQgJiYgbmF2aWdhdG9yLmNsaXBib2FyZC53cml0ZVRleHQpewogICAgICBuYXZpZ2F0b3IuY2xpYmJvYXJkLndyaXRlVGV4dCh2YWx1ZSkuVGhlbihkb25lKS5jYXRjaCgoKT0+e30pOwogICAgfSBlbHNlIHsKICAgICAgY29uc3QgdGE9ZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgidGV4dGFyZWEiKTsKICAgICAgdGEudmFsdWU9dmFsdWU7CiAgICAgIHRhLnN0eWxlLnBvc2l0aW9uPSJmaXhlZCI7CiAgICAgIHRhLnN0eWxlLm9wYWNpdHk9IjAiOwogICAgICBkb2N1bWVudC5ib2R5LmFwcGVuZENoaWxkKHRhKTsKICAgICAgdGEuc2VsZWN0KCk7CiAgICAgIGRvY3VtZW50LmV4ZWNDb21tYW5kKCJjb3B5Iik7CiAgICAgIGRvY3VtZW50LmJvZHkucmVtb3ZlQ2hpbGQodGEpOwogICAgICBkb25lKCk7CiAgICB9CiB9CiBuZXcgTXV0YXRpb25PYnNlcnZlcigoKT0+ewogICAgY29uc3QgY3VycmVudD1zb3VyY2UudGV4dENvbnRlbnQudHJpbSgpOwogICAgaWYoY3VycmVudCAmJiBjdXJyZW50IT09b3JpZ2luYWwpIGNvcHlUZXh0KGN1cnJlbnQpOwp9KS5vYnNlcnZlKHNvdXJjZSwge2NoaWxkTGlzdDp0cnVlLCBzdWJ0cmVlOnRydWUsIGNoYXJhY3RlckRhdGE6dHJ1ZX0pOwpzZXRUaW1lb3V0KCgpPT57Y29weVRleHQoc291cmNlLnRleHRDb250ZW50LnRyaW0oKSk7fSwxNTAwKTt9KSgpOwo8L3NjcmlwdD4KPC9ib2R5Pgo8L2h0bWw+";
-
-    private static final String[] FIREFOX_PACKAGES = new String[] {
+    private static final String[] FIREFOX_PACKAGES = {
             "org.ironfox.browser",
             "us.mull.mull",
             "org.mozilla.fennec_fdroid",
@@ -59,154 +35,85 @@ public final class TranslateActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        String selectedText = getSelectedText();
-        if (selectedText == null) {
-            finish();
-            return;
+        CharSequence text = getIntent() != null
+                ? getIntent().getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)
+                : null;
+        String textToTranslate = text != null ? text.toString() : "";
+
+        if (!textToTranslate.isEmpty()) {
+            String targetPackage = findInstalledBrowser();
+            if (targetPackage != null) {
+                launchWithLocalFile(targetPackage, textToTranslate);
+            } else {
+                Log.d(TAG, "No compatible Firefox-based browser found.");
+            }
         }
 
-        BrowserLaunchResult result = launchInFirstCompatibleBrowser(selectedText);
-        if (!result.launched) {
-            Log.d(TAG, result.report);
-            Toast.makeText(this, NO_BROWSER_MESSAGE, Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(this, DiagnosticsActivity.class)
-                    .putExtra(EXTRA_DIAGNOSTIC_REPORT, result.report)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-        }
         finish();
     }
 
-    private String getSelectedText() {
-        Intent intent = getIntent();
-        if (intent == null) {
-            return null;
-        }
-
-        CharSequence selectedText = intent.getCharSequenceExtra(PROCESS_TEXT_EXTRA);
-        if (selectedText == null || selectedText.length() == 0) {
-            return null;
-        }
-
-        return selectedText.toString();
-    }
-
-    private BrowserLaunchResult launchInFirstCompatibleBrowser(String textToTranslate) {
-        PackageManager packageManager = getPackageManager();
-        StringBuilder report = new StringBuilder();
-        report.append("IronBridge Translate browser probe report\n");
-        report.append("Selected text: ").append(maskSelection(textToTranslate)).append('\n');
-
+    private String findInstalledBrowser() {
         for (String packageName : FIREFOX_PACKAGES) {
-            boolean installed = isPackageInstalled(packageManager, packageName);
-            report.append("- ").append(packageName).append(": ");
-            if (!installed) {
-                report.append("not installed\n");
-                continue;
-            }
-
-            report.append("installed\n");
             try {
-                dispatchToBridge(packageName, textToTranslate);
-                report.append("  launch: success\n");
-                return new BrowserLaunchResult(true, report.toString());
-            } catch (ActivityNotFoundException | SecurityException | IllegalStateException ignored) {
-                report.append("  launch: failed with ")
-                        .append(ignored.getClass().getSimpleName())
-                        .append('\n');
+                getPackageManager().getPackageInfo(packageName, 0);
+                return packageName;
+            } catch (Exception ignored) {
+                // Not installed, continue probing the fallback list.
             }
         }
-
-        BrowserLaunchResult resolvedResult = launchByIntentResolution(textToTranslate, packageManager, report);
-        if (resolvedResult.launched) {
-            return resolvedResult;
-        }
-
-        report.append("No compatible Firefox-based browser found.\n");
-        return new BrowserLaunchResult(false, report.toString());
+        return null;
     }
 
-    private BrowserLaunchResult launchByIntentResolution(String textToTranslate, PackageManager packageManager, StringBuilder report) {
-        Intent probeIntent = buildSearchIntent(textToTranslate, null);
-        List<ResolveInfo> handlers = packageManager.queryIntentActivities(probeIntent, 0);
-        report.append("Fallback intent resolution candidates: ").append(handlers.size()).append('\n');
-
-        for (ResolveInfo handler : handlers) {
-            if (handler.activityInfo == null || handler.activityInfo.packageName == null) {
-                continue;
-            }
-
-            String packageName = handler.activityInfo.packageName;
-            report.append("- candidate: ").append(packageName).append('\n');
-            if (!isFirefoxFamilyPackage(packageName)) {
-                report.append("  skipped: not a Firefox-family package\n");
-                continue;
-            }
-
-            try {
-                dispatchToBridge(packageName, textToTranslate);
-                report.append("  launch: success\n");
-                return new BrowserLaunchResult(true, report.toString());
-            } catch (ActivityNotFoundException | SecurityException | IllegalStateException ignored) {
-                report.append("  launch: failed with ")
-                        .append(ignored.getClass().getSimpleName())
-                        .append('\n');
-            }
-        }
-
-        return new BrowserLaunchResult(false, report.toString());
-    }
-
-    private void dispatchToBridge(String targetPackage, String textToTranslate) {
-        Intent searchIntent = buildSearchIntent(textToTranslate, targetPackage);
-        Log.d(TAG, "Testing Search Intent hack via: " + targetPackage);
-        startActivity(searchIntent);
-    }
-
-    private Intent buildSearchIntent(String textToTranslate, String packageName) {
-        Intent searchIntent = new Intent(Intent.ACTION_WEB_SEARCH);
-        searchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        searchIntent.putExtra(SearchManager.QUERY, "bridge " + textToTranslate);
-        if (packageName != null) {
-            searchIntent.setPackage(packageName);
-        }
-        return searchIntent;
-    }
-
-    private boolean isFirefoxFamilyPackage(String packageName) {
-        return packageName.startsWith("org.mozilla.")
-                || packageName.startsWith("us.mull.")
-                || packageName.startsWith("org.ironfox.")
-                || packageName.startsWith("io.github.forkmaintainers.iceraven")
-                || packageName.startsWith("net.waterfox.")
-                || packageName.startsWith("com.cookiecutter.");
-    }
-
-    private boolean isPackageInstalled(PackageManager packageManager, String packageName) {
+    private void launchWithLocalFile(String targetPackage, String text) {
         try {
-            packageManager.getPackageInfo(packageName, 0);
-            return true;
-        } catch (PackageManager.NameNotFoundException e) {
-            return false;
+            String htmlContent = buildHtmlContent(text);
+
+            File cacheDir = new File(getCacheDir(), "shared");
+            if (!cacheDir.exists() && !cacheDir.mkdirs()) {
+                throw new IllegalStateException("Unable to create cache directory");
+            }
+
+            File htmlFile = new File(cacheDir, "translate.html");
+            try (FileOutputStream stream = new FileOutputStream(htmlFile, false)) {
+                stream.write(htmlContent.getBytes(StandardCharsets.UTF_8));
+            }
+
+            Uri contentUri = FileProvider.getUriForFile(
+                    this,
+                    FILE_PROVIDER_AUTHORITY,
+                    htmlFile
+            );
+
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setDataAndType(contentUri, "text/html");
+            intent.setPackage(targetPackage);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            startActivity(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Error launching Firefox viewer", e);
         }
     }
 
-    private String maskSelection(String encodedText) {
-        if (encodedText == null || encodedText.isEmpty()) {
-            return "<empty>";
-        }
-        if (encodedText.length() <= 24) {
-            return encodedText;
-        }
-        return encodedText.substring(0, 12) + "…" + encodedText.substring(encodedText.length() - 8);
+    private String buildHtmlContent(String text) {
+        return "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+                + "<title>IronBridge Translate</title>"
+                + "<style>"
+                + "body{background:#111;color:#eee;font-family:sans-serif;padding:20px;font-size:18px;line-height:1.6;}"
+                + ".badge{font-size:12px;color:#888;margin-bottom:10px;font-weight:bold;}"
+                + "</style></head><body>"
+                + "<div class=\"badge\">IRONBRIDGE OFFLINE TRANSLATE</div>"
+                + "<div id=\"content\">" + escapeHtml(text) + "</div>"
+                + "</body></html>";
     }
 
-    private static final class BrowserLaunchResult {
-        final boolean launched;
-        final String report;
-
-        BrowserLaunchResult(boolean launched, String report) {
-            this.launched = launched;
-            this.report = report;
-        }
+    private String escapeHtml(String str) {
+        return str
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("\n", "<br>");
     }
 }

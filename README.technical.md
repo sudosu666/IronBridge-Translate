@@ -2,7 +2,7 @@
 
 ## Purpose
 
-IronBridge Translate is a minimal Java Android app that implements `PROCESS_TEXT` and forwards highlighted text to a Firefox-family browser using a local `data:text/html;base64,...` bridge.
+IronBridge Translate is a minimal Java Android app that implements `PROCESS_TEXT` and forwards highlighted text to a Firefox-family browser using a local `content://` HTML file bridge via `FileProvider`.
 
 ## Data Flow
 
@@ -13,7 +13,9 @@ User selects text
   -> app encodes text with URLEncoder UTF-8
   -> app scans 11 browser packages in priority order
   -> first installed package is selected
-  -> ACTION_VIEW + setPackage(...) + data:text/html;base64,...
+  -> HTML written into cache
+  -> FileProvider exposes content:// URI
+  -> ACTION_VIEW + setPackage(...) + setDataAndType(..., "text/html")
   -> finish()
 ```
 
@@ -21,6 +23,7 @@ User selects text
 
 - No `android.permission.INTERNET`
 - `<queries>` contains the 11 browser package names
+- `FileProvider` is declared for cache HTML handoff
 - Activity is exported and translucent
 
 ## Runtime behavior
@@ -28,6 +31,7 @@ User selects text
 - The activity is intentionally non-interactive.
 - It exits immediately after dispatching the browser intent.
 - There is no background service and no local HTTP server.
+- There is no `WebView` in the translation handoff path.
 
 ## Browser fallback order
 
@@ -54,4 +58,3 @@ Environment:
 - JDK 17
 - Android SDK Platform 34
 - Android SDK Build-Tools 34
-

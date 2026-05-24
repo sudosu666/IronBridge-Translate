@@ -2,7 +2,7 @@
 
 **IronBridge Translate** is a tiny Android `PROCESS_TEXT` companion app for private, offline text translation workflows.
 
-Select text anywhere on Android, tap **IronBridge Translate**, and the app forwards that text to the first compatible Firefox-based browser through a fully local `data:text/html;base64,...` bridge.
+Select text anywhere on Android, tap **IronBridge Translate**, and the app forwards that text to the first compatible Firefox-based browser through a local `content://` HTML file bridge served by `FileProvider`.
 
 ## Why this exists
 
@@ -22,7 +22,7 @@ The app does one job and exits immediately.
 2. The app reads `Intent.EXTRA_PROCESS_TEXT` and URL-encodes it with UTF-8.
 3. It checks a fixed list of 11 Firefox-family packages using `PackageManager.getPackageInfo(...)`.
 4. The first installed browser is chosen with `.setPackage(...)`.
-5. A local HTML page is injected as a single Base64 `data:` URI and opened with `Intent.ACTION_VIEW`.
+5. A compact HTML page is written into the app cache, exposed through `FileProvider`, and opened with `Intent.ACTION_VIEW` as `text/html`.
 6. The activity calls `finish()` right away.
 
 ## Privacy by design
@@ -30,6 +30,7 @@ The app does one job and exits immediately.
 - The manifest contains **zero internet permissions**.
 - The selected text stays local to the app process.
 - The app never creates a socket or localhost server.
+- The app never uses `WebView` for the core handoff.
 - Browser discovery is limited to packages explicitly declared in `<queries>`.
 
 ## Supported browsers

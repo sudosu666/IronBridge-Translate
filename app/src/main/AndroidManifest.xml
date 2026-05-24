@@ -45,13 +45,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".DiagnosticsActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:noHistory="true"
-            android:theme="@style/Theme.IronbridgeTranslate" />
-
     </application>
 
 </manifest>
