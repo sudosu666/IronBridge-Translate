@@ -1,0 +1,4 @@
+<resources>
+    <style name="Theme.IronbridgeTranslate" parent="@android:style/Theme.Translucent.NoTitleBar" />
+</resources>
+
