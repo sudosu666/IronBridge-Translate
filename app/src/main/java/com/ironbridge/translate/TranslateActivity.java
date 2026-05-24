@@ -1,6 +1,7 @@
 package com.ironbridge.translate;
 
 import android.app.Activity;
+import android.app.SearchManager;
 import android.content.ClipData;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
@@ -58,13 +59,13 @@ public final class TranslateActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        String encodedText = getEncodedSelection();
-        if (encodedText == null) {
+        String selectedText = getSelectedText();
+        if (selectedText == null) {
             finish();
             return;
         }
 
-        BrowserLaunchResult result = launchInFirstCompatibleBrowser(encodedText);
+        BrowserLaunchResult result = launchInFirstCompatibleBrowser(selectedText);
         if (!result.launched) {
             Log.d(TAG, result.report);
             Toast.makeText(this, NO_BROWSER_MESSAGE, Toast.LENGTH_SHORT).show();
@@ -75,7 +76,7 @@ public final class TranslateActivity extends Activity {
         finish();
     }
 
-    private String getEncodedSelection() {
+    private String getSelectedText() {
         Intent intent = getIntent();
         if (intent == null) {
             return null;
@@ -86,18 +87,14 @@ public final class TranslateActivity extends Activity {
             return null;
         }
 
-        try {
-            return URLEncoder.encode(selectedText.toString(), UTF_8);
-        } catch (UnsupportedEncodingException e) {
-            return null;
-        }
+        return selectedText.toString();
     }
 
-    private BrowserLaunchResult launchInFirstCompatibleBrowser(String encodedText) {
+    private BrowserLaunchResult launchInFirstCompatibleBrowser(String textToTranslate) {
         PackageManager packageManager = getPackageManager();
         StringBuilder report = new StringBuilder();
         report.append("IronBridge Translate browser probe report\n");
-        report.append("Selected text: ").append(maskSelection(encodedText)).append('\n');
+        report.append("Selected text: ").append(maskSelection(textToTranslate)).append('\n');
 
         for (String packageName : FIREFOX_PACKAGES) {
             boolean installed = isPackageInstalled(packageManager, packageName);
@@ -109,23 +106,17 @@ public final class TranslateActivity extends Activity {
 
             report.append("installed\n");
             try {
-                Intent browserIntent = buildBrowserIntent(encodedText, packageName);
-                List<ResolveInfo> handlers = packageManager.queryIntentActivities(browserIntent, 0);
-                report.append("  resolved handlers: ").append(handlers.size()).append('\n');
-                startActivity(browserIntent);
+                dispatchToBridge(packageName, textToTranslate);
                 report.append("  launch: success\n");
                 return new BrowserLaunchResult(true, report.toString());
             } catch (ActivityNotFoundException | SecurityException | IllegalStateException ignored) {
                 report.append("  launch: failed with ")
                         .append(ignored.getClass().getSimpleName())
                         .append('\n');
-                if (DEBUG_BROWSER_PACKAGE.equals(packageName)) {
-                    runBrowserUriDiagnostics(packageName, encodedText, report);
-                }
             }
         }
 
-        BrowserLaunchResult resolvedResult = launchByIntentResolution(encodedText, packageManager, report);
+        BrowserLaunchResult resolvedResult = launchByIntentResolution(textToTranslate, packageManager, report);
         if (resolvedResult.launched) {
             return resolvedResult;
         }
@@ -134,8 +125,8 @@ public final class TranslateActivity extends Activity {
         return new BrowserLaunchResult(false, report.toString());
     }
 
-    private BrowserLaunchResult launchByIntentResolution(String encodedText, PackageManager packageManager, StringBuilder report) {
-        Intent probeIntent = buildBrowserIntent(encodedText, null);
+    private BrowserLaunchResult launchByIntentResolution(String textToTranslate, PackageManager packageManager, StringBuilder report) {
+        Intent probeIntent = buildSearchIntent(textToTranslate, null);
         List<ResolveInfo> handlers = packageManager.queryIntentActivities(probeIntent, 0);
         report.append("Fallback intent resolution candidates: ").append(handlers.size()).append('\n');
 
@@ -152,7 +143,7 @@ public final class TranslateActivity extends Activity {
             }
 
             try {
-                startActivity(buildBrowserIntent(encodedText, packageName));
+                dispatchToBridge(packageName, textToTranslate);
                 report.append("  launch: success\n");
                 return new BrowserLaunchResult(true, report.toString());
             } catch (ActivityNotFoundException | SecurityException | IllegalStateException ignored) {
@@ -165,79 +156,20 @@ public final class TranslateActivity extends Activity {
         return new BrowserLaunchResult(false, report.toString());
     }
 
-    private Intent buildBrowserIntent(String encodedText, String packageName) {
-        Intent viewIntent = new Intent(Intent.ACTION_VIEW);
-        viewIntent.addCategory(Intent.CATEGORY_BROWSABLE);
-        Uri bridgeUri = buildBridgeLaunchUri(encodedText);
-        viewIntent.setDataAndType(bridgeUri, BRIDGE_MIME_TYPE);
-        viewIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        viewIntent.setClipData(ClipData.newRawUri("IronBridge Bridge", bridgeUri));
-        viewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    private void dispatchToBridge(String targetPackage, String textToTranslate) {
+        Intent searchIntent = buildSearchIntent(textToTranslate, targetPackage);
+        Log.d(TAG, "Testing Search Intent hack via: " + targetPackage);
+        startActivity(searchIntent);
+    }
+
+    private Intent buildSearchIntent(String textToTranslate, String packageName) {
+        Intent searchIntent = new Intent(Intent.ACTION_WEB_SEARCH);
+        searchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        searchIntent.putExtra(SearchManager.QUERY, "bridge " + textToTranslate);
         if (packageName != null) {
-            viewIntent.setPackage(packageName);
+            searchIntent.setPackage(packageName);
         }
-        return viewIntent;
-    }
-
-    private Uri buildBridgeLaunchUri(String encodedText) {
-        try {
-            File htmlFile = writeBridgeHtmlFile();
-            Uri contentUri = FileProvider.getUriForFile(this, FILE_PROVIDER_AUTHORITY, htmlFile);
-            return contentUri.buildUpon().encodedFragment("q=" + encodedText + QUERY_LANGUAGE).build();
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to prepare bridge HTML file", e);
-        }
-    }
-
-    private File writeBridgeHtmlFile() throws IOException {
-        File bridgeDir = new File(getCacheDir(), BRIDGE_CACHE_DIR);
-        if (!bridgeDir.exists() && !bridgeDir.mkdirs()) {
-            throw new IOException("Unable to create bridge cache directory");
-        }
-
-        File htmlFile = new File(bridgeDir, BRIDGE_FILE_NAME);
-        String html = decodeBridgeHtmlTemplate();
-
-        try (FileOutputStream outputStream = new FileOutputStream(htmlFile, false)) {
-            outputStream.write(html.getBytes(StandardCharsets.UTF_8));
-            outputStream.flush();
-        }
-
-        return htmlFile;
-    }
-
-    private String decodeBridgeHtmlTemplate() {
-        String base64 = BASE64_HTML.substring("data:text/html;base64,".length());
-        byte[] htmlBytes = Base64.decode(base64, Base64.DEFAULT);
-        return new String(htmlBytes, StandardCharsets.UTF_8);
-    }
-
-    private void runBrowserUriDiagnostics(String packageName, String encodedText, StringBuilder report) {
-        String[] candidates = new String[] {
-                buildBridgeLaunchUri(encodedText).toString(),
-                "about:blank",
-                "https://example.com/"
-        };
-
-        for (String candidate : candidates) {
-            Intent probe = new Intent(Intent.ACTION_VIEW);
-            probe.addCategory(Intent.CATEGORY_BROWSABLE);
-            probe.setPackage(packageName);
-            probe.setData(Uri.parse(candidate));
-
-            List<ResolveInfo> handlers = getPackageManager().queryIntentActivities(probe, 0);
-            report.append("  uri probe: ").append(candidate).append('\n');
-            report.append("    resolved handlers: ").append(handlers.size()).append('\n');
-            try {
-                startActivity(probe);
-                report.append("    launch: success\n");
-                break;
-            } catch (ActivityNotFoundException | SecurityException | IllegalStateException e) {
-                report.append("    launch: failed with ")
-                        .append(e.getClass().getSimpleName())
-                        .append('\n');
-            }
-        }
+        return searchIntent;
     }
 
     private boolean isFirefoxFamilyPackage(String packageName) {
