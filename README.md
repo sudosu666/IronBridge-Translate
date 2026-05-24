@@ -85,5 +85,4 @@ app/src/main/
 
 ## License
 
-Add your preferred license here before publishing.
-
+This project is licensed under the [MIT License](./LICENSE).
