@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">Ironbridge Translate</string>
+    <string name="bottom_sheet_title">IronBridge Translate</string>
+    <string name="original_text_label">ORIGINAL TEXT</string>
+    <string name="target_language_label">TARGET LANGUAGE</string>
+    <string name="translation_label">TRANSLATION</string>
+    <string name="copy_button">Copy</string>
+    <string name="close_button">Close</string>
 </resources>
-

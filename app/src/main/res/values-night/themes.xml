@@ -1,3 +1,7 @@
 <resources>
-    <style name="Theme.IronbridgeTranslate" parent="@android:style/Theme.Translucent.NoTitleBar" />
+    <style name="Theme.IronbridgeTranslate" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
 </resources>

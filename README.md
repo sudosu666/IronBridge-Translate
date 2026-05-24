@@ -1,57 +1,40 @@
 # IronBridge Translate
 
-**IronBridge Translate** is a tiny Android `PROCESS_TEXT` companion app for private, offline text translation workflows.
+IronBridge Translate is a tiny Android `PROCESS_TEXT` companion app that turns selected text into an offline translation inside a compact bottom sheet.
 
-Select text anywhere on Android, tap **IronBridge Translate**, and the app forwards that text to the first compatible Firefox-based browser through a local `content://` HTML file bridge served by `FileProvider`.
-
-## Why this exists
-
-Most translation flows on mobile are either cloud-backed, heavyweight, or buried behind broken UI surfaces. IronBridge Translate keeps the experience simple:
+The app is privacy-first:
 
 - no `INTERNET` permission
 - no background service
-- no local web server
-- no account sign-in
+- no browser handoff
 - no analytics
+- no account sign-in
 
-The app does one job and exits immediately.
-
-## How it works
+## What it does
 
 1. Android sends the selected text to `TranslateActivity` through `android.intent.action.PROCESS_TEXT`.
-2. The app reads `Intent.EXTRA_PROCESS_TEXT` and URL-encodes it with UTF-8.
-3. It checks a fixed list of 11 Firefox-family packages using `PackageManager.getPackageInfo(...)`.
-4. The first installed browser is chosen with `.setPackage(...)`.
-5. A compact HTML page is written into the app cache, exposed through `FileProvider`, and opened with `Intent.ACTION_VIEW` as `text/html`.
-6. The activity calls `finish()` right away.
+2. The app detects the source language locally with ML Kit.
+3. It chooses a target language from the supported ML Kit translation set.
+4. It downloads the required on-device translation model if needed.
+5. It shows the result in a lightweight bottom sheet and lets you copy it to the clipboard.
 
-## Privacy by design
+## Privacy model
 
-- The manifest contains **zero internet permissions**.
-- The selected text stays local to the app process.
-- The app never creates a socket or localhost server.
-- The app never uses `WebView` for the core handoff.
-- Browser discovery is limited to packages explicitly declared in `<queries>`.
+IronBridge Translate does not ask for network access in its manifest. Translation happens on-device through ML Kit once the language model exists on the phone.
 
-## Supported browsers
+Important nuance:
 
-The fallback order is:
+- the translation engine is offline once the model is present
+- the model may be provisioned dynamically by Google Play services the first time a language pair is used
+- if the model is not yet available, the app shows a clear failure state instead of pretending to translate
 
-1. `org.ironfox.browser`
-2. `us.mull.mull`
-3. `org.mozilla.fennec_fdroid`
-4. `io.github.forkmaintainers.iceraven`
-5. `net.waterfox.android.release`
-6. `org.mozilla.firefox`
-7. `org.mozilla.fenix`
-8. `org.mozilla.firefox_beta`
-9. `org.mozilla.fenix.nightly`
-10. `org.mozilla.focus`
-11. `com.cookiecutter.cookiecutter`
+## Supported behavior
 
-## Screenshots
-
-No separate UI. The app exists as a translucent system action.
+- selected text from any app that supports `PROCESS_TEXT`
+- source language detection
+- target language selection from ML Kit's supported languages
+- translated output display
+- one-tap copy to clipboard
 
 ## Build
 
@@ -65,7 +48,7 @@ Requirements:
 - Android SDK Platform 34
 - Android SDK Build-Tools 34
 
-If Gradle needs your SDK path, create `local.properties`:
+If Gradle needs your SDK path, create `local.properties` in the project root:
 
 ```properties
 sdk.dir=/home/niko/Android/Sdk
@@ -78,8 +61,7 @@ app/src/main/
   AndroidManifest.xml
   java/com/ironbridge/translate/TranslateActivity.java
   res/
-    drawable/
-    mipmap-anydpi-v26/
+    layout/
     values/
     values-night/
 ```
