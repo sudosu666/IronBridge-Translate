@@ -13,27 +13,39 @@ The app is privacy-first:
 ## What it does
 
 1. Android sends the selected text to `TranslateActivity` through `android.intent.action.PROCESS_TEXT`.
-2. The app detects the source language locally with ML Kit.
-3. It chooses a target language from the supported ML Kit translation set.
-4. It downloads the required on-device translation model if needed.
-5. It shows the result in a lightweight bottom sheet and lets you copy it to the clipboard.
+2. The app shows a compact bottom sheet with the source text.
+3. You pick a compatible `.tflite` translation model from your device.
+4. The model is copied into private app storage.
+5. The app runs inference locally with TensorFlow Lite and shows the result.
+6. You can copy the translated text to the clipboard.
 
 ## Privacy model
 
-IronBridge Translate does not ask for network access in its manifest. Translation happens on-device through ML Kit once the language model exists on the phone.
+IronBridge Translate does not ask for network access in its manifest. Once a user supplies a compatible model file, translation runs entirely on-device.
 
 Important nuance:
 
-- the translation engine is offline once the model is present
-- the model may be provisioned dynamically by Google Play services the first time a language pair is used
-- if the model is not yet available, the app shows a clear failure state instead of pretending to translate
+- the app itself is zero-permission with respect to networking
+- the model file is user-provided and stored in private app storage
+- translation is only as good as the TFLite model you provide
+- this implementation expects a TFLite text-translation model with a single string input and a single string output
+
+## Model setup
+
+On first launch, or whenever no model is stored yet, the sheet tells you to pick a compatible model such as `en_ru.tflite`.
+
+You can:
+
+- choose a `.tflite` file with the system file picker
+- let the app copy it into internal storage
+- keep using it offline after that
 
 ## Supported behavior
 
 - selected text from any app that supports `PROCESS_TEXT`
-- source language detection
-- target language selection from ML Kit's supported languages
-- translated output display
+- local model selection through SAF file picker
+- private model storage in the app sandbox
+- offline inference with TensorFlow Lite
 - one-tap copy to clipboard
 
 ## Build
@@ -59,7 +71,9 @@ sdk.dir=/home/niko/Android/Sdk
 ```text
 app/src/main/
   AndroidManifest.xml
-  java/com/ironbridge/translate/TranslateActivity.java
+  java/com/ironbridge/translate/
+    TranslateActivity.java
+    TfliteTranslationEngine.java
   res/
     layout/
     values/

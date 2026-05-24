@@ -1,9 +1,27 @@
 <resources>
     <string name="app_name">Ironbridge Translate</string>
     <string name="bottom_sheet_title">IronBridge Translate</string>
+    <string name="model_hint">Choose a compatible TFLite translation model such as %1$s. The app copies it into private storage and runs it offline.</string>
+    <string name="model_status_label">MODEL STATUS</string>
     <string name="original_text_label">ORIGINAL TEXT</string>
-    <string name="target_language_label">TARGET LANGUAGE</string>
     <string name="translation_label">TRANSLATION</string>
+    <string name="pick_model_button">Pick model</string>
+    <string name="replace_model_button">Replace model</string>
+    <string name="translate_button">Translate</string>
     <string name="copy_button">Copy</string>
     <string name="close_button">Close</string>
+    <string name="no_model_loaded">No model loaded yet.</string>
+    <string name="pick_model_prompt">Choose a .tflite model to continue.</string>
+    <string name="ready_to_pick_model">Ready to pick a local TFLite model.</string>
+    <string name="loading_model">Loading model...</string>
+    <string name="model_ready_offline">Model ready for offline inference.</string>
+    <string name="model_loaded">Loaded: %1$s</string>
+    <string name="model_load_failed">Model load failed.</string>
+    <string name="model_load_failed_toast">The selected model is not compatible.</string>
+    <string name="translation_failed">Translation failed.</string>
+    <string name="translation_failed_toast">Translation could not be produced.</string>
+    <string name="translation_ready">Translation ready.</string>
+    <string name="translating_offline">Translating offline...</string>
+    <string name="copied_to_clipboard">Translated text copied.</string>
+    <string name="model_copy_failed">Unable to copy model into app storage.</string>
 </resources>

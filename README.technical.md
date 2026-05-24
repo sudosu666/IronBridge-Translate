@@ -2,7 +2,7 @@
 
 ## Purpose
 
-IronBridge Translate is a minimal Java Android app that implements `PROCESS_TEXT` and performs offline-first translation in a bottom sheet using ML Kit.
+IronBridge Translate is a minimal Java Android app that implements `PROCESS_TEXT` and performs offline translation in a bottom sheet using a user-supplied TensorFlow Lite model.
 
 ## Data flow
 
@@ -11,10 +11,11 @@ User selects text
   -> Android invokes TranslateActivity via android.intent.action.PROCESS_TEXT
   -> app reads Intent.EXTRA_PROCESS_TEXT
   -> app shows a bottom sheet UI
-  -> ML Kit language ID detects the source language
-  -> ML Kit Translation resolves a target language
-  -> Translator.downloadModelIfNeeded(...)
-  -> Translator.translate(...)
+  -> user picks a local .tflite model via ACTION_OPEN_DOCUMENT
+  -> app copies the model into internal storage
+  -> app loads the model with TFLite Interpreter
+  -> app validates that the model exposes one STRING input and one STRING output
+  -> app runs Interpreter.runForMultipleInputsOutputs(...)
   -> translated text shown in the sheet
   -> optional clipboard copy
   -> finish()
@@ -34,18 +35,23 @@ User selects text
 - There is no background service.
 - There is no local HTTP server.
 - There is no `WebView`.
+- The app copies the selected model into private storage before loading it.
 
-## ML Kit behavior
+## Model contract
 
-- Language detection uses ML Kit's on-device language ID API.
-- Translation uses ML Kit's on-device translation API.
-- The app only uses supported translation language tags from `TranslateLanguage.getAllLanguages()`.
-- A translation model may still need to be provisioned by Google Play services the first time a language pair is used.
-- After the model is available, translation runs locally on the device.
+This implementation expects a TFLite model that:
+
+- accepts exactly one input tensor
+- returns exactly one output tensor
+- uses `STRING` for both tensors
+
+If the supplied model uses token IDs, float tensors, or a different signature, the app will reject it with a clear error instead of pretending the pipeline is compatible.
 
 ## UI
 
-- The bottom sheet shows the original text, detected source language, selectable target language, translation status, and translated output.
+- The bottom sheet shows the original text, model status, translation status, and translated output.
+- `Pick model` launches SAF to choose a `.tflite` file.
+- `Translate` reruns inference with the currently loaded model.
 - Copy-to-clipboard is available after translation completes.
 
 ## Build
