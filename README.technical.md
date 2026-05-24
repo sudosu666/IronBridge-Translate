@@ -2,7 +2,7 @@
 
 ## Purpose
 
-IronBridge Translate is a minimal Java Android app that implements `PROCESS_TEXT` and performs offline translation in a bottom sheet using a user-supplied TensorFlow Lite model.
+IronBridge Translate is a minimal Java Android app that implements `PROCESS_TEXT` and serves the selected text to a Firefox-family browser through a local HTTP bridge on `127.0.0.1`.
 
 ## Data flow
 
@@ -10,49 +10,38 @@ IronBridge Translate is a minimal Java Android app that implements `PROCESS_TEXT
 User selects text
   -> Android invokes TranslateActivity via android.intent.action.PROCESS_TEXT
   -> app reads Intent.EXTRA_PROCESS_TEXT
-  -> app shows a bottom sheet UI
-  -> user picks a local .tflite model via ACTION_OPEN_DOCUMENT
-  -> app copies the model into internal storage
-  -> app loads the model with TFLite Interpreter
-  -> app validates that the model exposes one STRING input and one STRING output
-  -> app runs Interpreter.runForMultipleInputsOutputs(...)
-  -> translated text shown in the sheet
-  -> optional clipboard copy
+  -> app URL-encodes the text with UTF-8
+  -> app starts a NanoHTTPD server on 127.0.0.1:8080
+  -> app launches Firefox-family browser with ACTION_VIEW
+  -> browser opens http://127.0.0.1:8080/translate?q=...
+  -> local HTML page reads q from location.search
+  -> Firefox may show its built-in translation UI
+  -> optional clipboard copy from the page's MutationObserver bridge
   -> finish()
 ```
 
 ## Manifest constraints
 
 - No `android.permission.INTERNET`
-- No browser package queries
+- `<queries>` contains the 11 browser package names
 - No `FileProvider`
 - Activity is exported so the system text-selection menu can invoke it
 
 ## Runtime behavior
 
 - The activity is intentionally short-lived.
-- It exits when the sheet is dismissed.
+- It exits immediately after dispatching the browser intent.
 - There is no background service.
-- There is no local HTTP server.
-- There is no `WebView`.
-- The app copies the selected model into private storage before loading it.
+- There is no remote server.
+- The server listens only on the device loopback interface.
 
-## Model contract
+## Browser bridge
 
-This implementation expects a TFLite model that:
-
-- accepts exactly one input tensor
-- returns exactly one output tensor
-- uses `STRING` for both tensors
-
-If the supplied model uses token IDs, float tensors, or a different signature, the app will reject it with a clear error instead of pretending the pipeline is compatible.
-
-## UI
-
-- The bottom sheet shows the original text, model status, translation status, and translated output.
-- `Pick model` launches SAF to choose a `.tflite` file.
-- `Translate` reruns inference with the currently loaded model.
-- Copy-to-clipboard is available after translation completes.
+- `LocalBridgeServer` extends NanoHTTPD.
+- The server serves a single HTML page at `/translate`.
+- The page contains a `<div id="text" lang="en" dir="ltr"></div>`.
+- JavaScript reads `q` from `location.search`.
+- A `MutationObserver` watches for page content changes and attempts to copy translated text back to the clipboard.
 
 ## Build
 

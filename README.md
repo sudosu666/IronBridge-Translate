@@ -1,52 +1,49 @@
 # IronBridge Translate
 
-IronBridge Translate is a tiny Android `PROCESS_TEXT` companion app that turns selected text into an offline translation inside a compact bottom sheet.
+IronBridge Translate is a tiny Android `PROCESS_TEXT` companion app that forwards selected text to a Firefox-based browser through a local HTTP bridge on `127.0.0.1`.
 
 The app is privacy-first:
 
 - no `INTERNET` permission
 - no background service
-- no browser handoff
 - no analytics
 - no account sign-in
+- no remote server
 
 ## What it does
 
-1. Android sends the selected text to `TranslateActivity` through `android.intent.action.PROCESS_TEXT`.
-2. The app shows a compact bottom sheet with the source text.
-3. You pick a compatible `.tflite` translation model from your device.
-4. The model is copied into private app storage.
-5. The app runs inference locally with TensorFlow Lite and shows the result.
-6. You can copy the translated text to the clipboard.
+1. Android sends selected text to `TranslateActivity` through `android.intent.action.PROCESS_TEXT`.
+2. The app URL-encodes that text with UTF-8.
+3. A tiny local HTTP server serves an HTML page from `http://127.0.0.1:8080/translate`.
+4. The app launches the first compatible Firefox-family browser with an `ACTION_VIEW` intent.
+5. Firefox opens the page locally and can show its built-in offline translation UI.
 
 ## Privacy model
 
-IronBridge Translate does not ask for network access in its manifest. Once a user supplies a compatible model file, translation runs entirely on-device.
+IronBridge Translate does not ask for network access in its manifest. The only network path involved is the loopback interface on the device itself.
 
 Important nuance:
 
-- the app itself is zero-permission with respect to networking
-- the model file is user-provided and stored in private app storage
-- translation is only as good as the TFLite model you provide
-- this implementation expects a TFLite text-translation model with a single string input and a single string output
+- the selected text stays on the device
+- the bridge is local only
+- the app does not speak to external servers
+- browser support depends on the installed Firefox-family build
 
-## Model setup
+## Supported browsers
 
-On first launch, or whenever no model is stored yet, the sheet tells you to pick a compatible model such as `en_ru.tflite`.
+The app probes these packages in order:
 
-You can:
-
-- choose a `.tflite` file with the system file picker
-- let the app copy it into internal storage
-- keep using it offline after that
-
-## Supported behavior
-
-- selected text from any app that supports `PROCESS_TEXT`
-- local model selection through SAF file picker
-- private model storage in the app sandbox
-- offline inference with TensorFlow Lite
-- one-tap copy to clipboard
+1. `org.ironfox.browser`
+2. `us.mull.mull`
+3. `org.mozilla.fennec_fdroid`
+4. `io.github.forkmaintainers.iceraven`
+5. `net.waterfox.android.release`
+6. `org.mozilla.firefox`
+7. `org.mozilla.fenix`
+8. `org.mozilla.firefox_beta`
+9. `org.mozilla.fenix.nightly`
+10. `org.mozilla.focus`
+11. `com.cookiecutter.cookiecutter`
 
 ## Build
 
@@ -73,9 +70,8 @@ app/src/main/
   AndroidManifest.xml
   java/com/ironbridge/translate/
     TranslateActivity.java
-    TfliteTranslationEngine.java
+    LocalBridgeServer.java
   res/
-    layout/
     values/
     values-night/
 ```

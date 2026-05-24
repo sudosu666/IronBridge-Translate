@@ -1,5 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <queries>
+        <package android:name="org.ironfox.browser" />
+        <package android:name="us.mull.mull" />
+        <package android:name="org.mozilla.fennec_fdroid" />
+        <package android:name="io.github.forkmaintainers.iceraven" />
+        <package android:name="net.waterfox.android.release" />
+        <package android:name="org.mozilla.firefox" />
+        <package android:name="org.mozilla.fenix" />
+        <package android:name="org.mozilla.firefox_beta" />
+        <package android:name="org.mozilla.fenix.nightly" />
+        <package android:name="org.mozilla.focus" />
+        <package android:name="com.cookiecutter.cookiecutter" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
