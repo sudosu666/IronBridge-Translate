@@ -4,12 +4,14 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.widget.Toast;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.List;
 
 public final class TranslateActivity extends Activity {
 
@@ -86,6 +88,31 @@ public final class TranslateActivity extends Activity {
             }
         }
 
+        return launchByIntentResolution(encodedText, packageManager);
+    }
+
+    private boolean launchByIntentResolution(String encodedText, PackageManager packageManager) {
+        Intent probeIntent = buildBrowserIntent(encodedText, null);
+        List<ResolveInfo> handlers = packageManager.queryIntentActivities(probeIntent, 0);
+
+        for (ResolveInfo handler : handlers) {
+            if (handler.activityInfo == null || handler.activityInfo.packageName == null) {
+                continue;
+            }
+
+            String packageName = handler.activityInfo.packageName;
+            if (!isFirefoxFamilyPackage(packageName)) {
+                continue;
+            }
+
+            try {
+                startActivity(buildBrowserIntent(encodedText, packageName));
+                return true;
+            } catch (ActivityNotFoundException | SecurityException ignored) {
+                // Keep scanning the remaining compatible handlers.
+            }
+        }
+
         return false;
     }
 
@@ -93,8 +120,19 @@ public final class TranslateActivity extends Activity {
         Intent viewIntent = new Intent(Intent.ACTION_VIEW);
         viewIntent.setData(Uri.parse(BASE64_HTML + QUERY_PREFIX + encodedText + QUERY_LANGUAGE));
         viewIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        viewIntent.setPackage(packageName);
+        if (packageName != null) {
+            viewIntent.setPackage(packageName);
+        }
         return viewIntent;
+    }
+
+    private boolean isFirefoxFamilyPackage(String packageName) {
+        return packageName.startsWith("org.mozilla.")
+                || packageName.startsWith("us.mull.")
+                || packageName.startsWith("org.ironfox.")
+                || packageName.startsWith("io.github.forkmaintainers.iceraven")
+                || packageName.startsWith("net.waterfox.")
+                || packageName.startsWith("com.cookiecutter.");
     }
 
     private boolean isPackageInstalled(PackageManager packageManager, String packageName) {
